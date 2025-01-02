@@ -8,5 +8,7 @@ class ContentTypeFilter(Filter):
     def handle(self, request):
         content_type = request.headers.get("Content-Type", "")
         if content_type not in self.allowed_content_types:
+            print(f"ContentTypeFilter: Blocking request with Content-Type '{content_type}'")
             return False
+        print(f"ContentTypeFilter: Allowing request with Content-Type '{content_type}'")
         return super().handle(request)

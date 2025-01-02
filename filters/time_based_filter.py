@@ -9,6 +9,9 @@ class TimeBasedFilter(Filter):
 
     def handle(self, request):
         current_hour = datetime.now().hour
+        print(f"TimeBasedFilter: Current hour is {current_hour}, allowed hours are {self.start_hour} to {self.end_hour}")
         if not (self.start_hour <= current_hour < self.end_hour):
+            print(f"TimeBasedFilter: Blocking request (outside allowed hours)")
             return False
+        print(f"TimeBasedFilter: Allowing request (within allowed hours)")
         return super().handle(request)
