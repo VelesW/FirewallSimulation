@@ -7,6 +7,39 @@ from filters.content_type_filter import ContentTypeFilter
 from firewall import Firewall
 from request import Request
 
+import time
+import random
+
+# Symulacja ruchu sieciowego
+def simulate_traffic(firewall):
+    ip_pool = ["192.168.1.1", "192.168.1.2", "10.0.0.1", "10.0.0.2"]
+    user_agents = ["Mozilla/5.0", "Chrome/90.0", "Bot/1.0"]
+    content_types = ["application/json", "text/html", "application/xml"]
+    bodies = [
+        "Hello, world!",
+        "SELECT * FROM users",
+        "<script>alert('XSS')</script>",
+        "DROP TABLE students",
+    ]
+
+    while True:
+        # Generowanie losowego żądania
+        ip = random.choice(ip_pool)
+        user_agent = random.choice(user_agents)
+        content_type = random.choice(content_types)
+        body = random.choice(bodies)
+
+        request = Request(ip, "POST", {"User-Agent": user_agent, "Content-Type": content_type}, body)
+        print(f"Request from {ip}: User-Agent={user_agent}, Content-Type={content_type}, Body='{body[:20]}...'")
+        
+        # Przetwarzanie żądania przez firewall
+        response = firewall.process_request(request)
+        print(f"Response: {response}")
+        
+        # Odczekanie 2 sekund
+        time.sleep(2)
+
+# Główna funkcja
 if __name__ == "__main__":
     # Tworzenie listy dozwolonych wartości
     whitelist = ["192.168.1.1", "10.0.0.1"]
@@ -18,7 +51,7 @@ if __name__ == "__main__":
     ip_filter = IPFilter(whitelist, blacklist)
     content_filter = ContentFilter(ip_filter)
     header_filter = HeaderFilter(allowed_user_agents, content_filter)
-    rate_limit_filter = RateLimitFilter(10, 60, header_filter)  # Max 10 żądań na minutę
+    rate_limit_filter = RateLimitFilter(5, 10, header_filter)  # Max 5 żądań na 10 sekund
     time_based_filter = TimeBasedFilter(8, 18, rate_limit_filter)  # Dozwolone od 8:00 do 18:00
     content_type_filter = ContentTypeFilter(allowed_content_types, time_based_filter)
 
@@ -26,29 +59,7 @@ if __name__ == "__main__":
     firewall = Firewall()
     firewall.configure(content_type_filter)
 
-# Przetwarzanie żądań
-request1 = Request("192.168.1.1", "POST", {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}, "Hello!")
-print(firewall.process_request(request1))  # Oczekiwany wynik: "200 OK"
+    # Symulacja ruchu sieciowego
+    simulate_traffic(firewall)
 
-request2 = Request("192.168.1.2", "POST", {"User-Agent": "Bot/1.0", "Content-Type": "application/json"}, "Malicious")
-print(firewall.process_request(request2))  # Oczekiwany wynik: "403 Forbidden"
-
-request3 = Request("192.168.1.1", "POST", {"User-Agent": "Mozilla/5.0", "Content-Type": "text/html"}, "SELECT * FROM users")
-print(firewall.process_request(request3))  # Oczekiwany wynik: "403 OK"
-
-# Additional requests
-request4 = Request("10.0.0.1", "GET", {"User-Agent": "Chrome/90.0", "Content-Type": "application/json"}, "Fetch data")
-print(firewall.process_request(request4))  # Oczekiwany wynik: "200 OK"
-
-request5 = Request("10.0.0.1", "POST", {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}, "Submit data")
-print(firewall.process_request(request5))  # Oczekiwany wynik: "200 OK"
-
-request6 = Request("192.168.1.3", "GET", {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}, "Fetch data")
-print(firewall.process_request(request6))  # Oczekiwany wynik: "403 Forbidden"  # IP not in whitelist
-
-request7 = Request("192.168.1.1", "POST", {"User-Agent": "Mozilla/5.0", "Content-Type": "application/xml"}, "Submit data")
-print(firewall.process_request(request7))  # Oczekiwany wynik: "403 Forbidden"  # Content-Type not allowed
-
-request8 = Request("192.168.1.1", "POST", {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}, "Hello!")
-print(firewall.process_request(request8))  # Oczekiwany wynik: "429 Too Many Requests"  # Rate limit exceeded
 
